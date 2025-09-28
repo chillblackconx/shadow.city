@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Shadow City</title>
+  <title>Shadow City v2</title>
   <style>
     body { margin:0; background:#0d0d0d; color:white; font-family:Arial; text-align:center; }
     canvas { background:#1a1a1a; display:block; margin:20px auto; border:2px solid #444; }
@@ -22,28 +22,27 @@
   <p>[Clique pour placer un bâtiment] - [Espace pour switcher de monde]</p>
   
   <div class="menu">
-    <button id="houseBtn" class="active">🏠 Maison</button>
-    <button id="farmBtn">🌾 Ferme</button>
-    <button id="factoryBtn">🏭 Usine</button>
-    <button id="roadBtn">🛣️ Route</button>
+    <button id="houseBtn" class="active">Maison</button>
+    <button id="farmBtn">Ferme</button>
+    <button id="factoryBtn">Usine</button>
+    <button id="roadBtn">Route</button>
   </div>
 
-  <canvas id="gameCanvas" width="500" height="500"></canvas>
+  <canvas id="gameCanvas" width="600" height="600"></canvas>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    const gridSize = 10;
+    const gridSize = 12;
     const cellSize = 50;
-    let world = "light"; // light ou shadow
-
+    let world = "light"; 
     let selectedBuilding = "house";
 
-    // Grille des bâtiments
+    // Grille
     let grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(null));
 
-    // Dessiner la grille + bâtiments
+    // Dessiner tout
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -53,35 +52,54 @@
           ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
 
           let b = grid[y][x];
-          if (b) {
-            drawBuilding(x, y, b);
-          }
+          if (b) drawBuilding(x, y, b);
         }
       }
     }
 
-    // Dessiner un bâtiment
+    // Dessiner un bâtiment stylisé
     function drawBuilding(x, y, type) {
-      let colors = {
-        house: world === "light" ? "#f1c40f" : "#8e44ad",
-        farm: world === "light" ? "#2ecc71" : "#27ae60",
-        factory: world === "light" ? "#e67e22" : "#c0392b",
-        road: "#7f8c8d"
-      };
+      let px = x * cellSize, py = y * cellSize;
 
-      ctx.fillStyle = colors[type];
-      ctx.fillRect(x * cellSize + 5, y * cellSize + 5, cellSize - 10, cellSize - 10);
-
-      ctx.fillStyle = "black";
-      ctx.font = "14px Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-
-      let emoji = { house: "🏠", farm: "🌾", factory: "🏭", road: "🛣️" };
-      ctx.fillText(emoji[type], x * cellSize + cellSize / 2, y * cellSize + cellSize / 2);
+      if (type === "house") {
+        // Maison : carré + toit
+        ctx.fillStyle = (world === "light") ? "#ffcc66" : "#663399";
+        ctx.fillRect(px+10, py+20, 30, 25);
+        ctx.fillStyle = (world === "light") ? "#cc3333" : "#222";
+        ctx.beginPath();
+        ctx.moveTo(px+10, py+20);
+        ctx.lineTo(px+25, py+5);
+        ctx.lineTo(px+40, py+20);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (type === "farm") {
+        // Ferme : champs verts
+        ctx.fillStyle = (world === "light") ? "#2ecc71" : "#145a32";
+        ctx.fillRect(px+5, py+5, 40, 40);
+        ctx.strokeStyle = "#27ae60";
+        for (let i = 0; i < 4; i++) {
+          ctx.beginPath();
+          ctx.moveTo(px+5, py+10*i+5);
+          ctx.lineTo(px+45, py+10*i+5);
+          ctx.stroke();
+        }
+      }
+      if (type === "factory") {
+        // Usine : bloc gris avec cheminée
+        ctx.fillStyle = (world === "light") ? "#bdc3c7" : "#7f8c8d";
+        ctx.fillRect(px+5, py+20, 40, 25);
+        ctx.fillStyle = "#444";
+        ctx.fillRect(px+15, py+5, 10, 15);
+      }
+      if (type === "road") {
+        // Route : gris foncé
+        ctx.fillStyle = "#555";
+        ctx.fillRect(px, py+20, 50, 10);
+      }
     }
 
-    // Placer un bâtiment
+    // Placer
     canvas.addEventListener("click", (e) => {
       const rect = canvas.getBoundingClientRect();
       const x = Math.floor((e.clientX - rect.left) / cellSize);
@@ -92,7 +110,7 @@
       draw();
     });
 
-    // Switch de monde
+    // Switch monde
     document.addEventListener("keydown", (e) => {
       if (e.code === "Space") {
         world = (world === "light") ? "shadow" : "light";
@@ -100,7 +118,7 @@
       }
     });
 
-    // Menu de sélection
+    // Menu
     document.querySelectorAll("button").forEach(btn => {
       btn.addEventListener("click", () => {
         document.querySelectorAll("button").forEach(b => b.classList.remove("active"));
