@@ -4,14 +4,30 @@
   <meta charset="UTF-8">
   <title>Shadow City</title>
   <style>
-    body { margin:0; background:#111; color:white; font-family:Arial; text-align:center; }
-    canvas { background:#222; display:block; margin:20px auto; }
+    body { margin:0; background:#0d0d0d; color:white; font-family:Arial; text-align:center; }
+    canvas { background:#1a1a1a; display:block; margin:20px auto; border:2px solid #444; }
     h1 { margin:10px; }
+    .menu {
+      display:flex; justify-content:center; gap:10px; margin:10px;
+    }
+    button {
+      padding:8px 12px; border:none; border-radius:6px;
+      background:#333; color:white; cursor:pointer;
+    }
+    button.active { background:#f39c12; }
   </style>
 </head>
 <body>
   <h1>🌞 Shadow City 🌑</h1>
-  <p>[Clique pour placer une maison] - [Espace pour switcher de monde]</p>
+  <p>[Clique pour placer un bâtiment] - [Espace pour switcher de monde]</p>
+  
+  <div class="menu">
+    <button id="houseBtn" class="active">🏠 Maison</button>
+    <button id="farmBtn">🌾 Ferme</button>
+    <button id="factoryBtn">🏭 Usine</button>
+    <button id="roadBtn">🛣️ Route</button>
+  </div>
+
   <canvas id="gameCanvas" width="500" height="500"></canvas>
 
   <script>
@@ -22,7 +38,9 @@
     const cellSize = 50;
     let world = "light"; // light ou shadow
 
-    // Grille des bâtiments (null ou "house")
+    let selectedBuilding = "house";
+
+    // Grille des bâtiments
     let grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(null));
 
     // Dessiner la grille + bâtiments
@@ -31,24 +49,45 @@
 
       for (let y = 0; y < gridSize; y++) {
         for (let x = 0; x < gridSize; x++) {
-          ctx.strokeStyle = "#444";
+          ctx.strokeStyle = "#333";
           ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
 
-          if (grid[y][x] === "house") {
-            ctx.fillStyle = (world === "light") ? "yellow" : "purple";
-            ctx.fillRect(x * cellSize + 5, y * cellSize + 5, cellSize - 10, cellSize - 10);
+          let b = grid[y][x];
+          if (b) {
+            drawBuilding(x, y, b);
           }
         }
       }
     }
 
-    // Placer une maison
+    // Dessiner un bâtiment
+    function drawBuilding(x, y, type) {
+      let colors = {
+        house: world === "light" ? "#f1c40f" : "#8e44ad",
+        farm: world === "light" ? "#2ecc71" : "#27ae60",
+        factory: world === "light" ? "#e67e22" : "#c0392b",
+        road: "#7f8c8d"
+      };
+
+      ctx.fillStyle = colors[type];
+      ctx.fillRect(x * cellSize + 5, y * cellSize + 5, cellSize - 10, cellSize - 10);
+
+      ctx.fillStyle = "black";
+      ctx.font = "14px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      let emoji = { house: "🏠", farm: "🌾", factory: "🏭", road: "🛣️" };
+      ctx.fillText(emoji[type], x * cellSize + cellSize / 2, y * cellSize + cellSize / 2);
+    }
+
+    // Placer un bâtiment
     canvas.addEventListener("click", (e) => {
       const rect = canvas.getBoundingClientRect();
       const x = Math.floor((e.clientX - rect.left) / cellSize);
       const y = Math.floor((e.clientY - rect.top) / cellSize);
       if (x >= 0 && y >= 0 && x < gridSize && y < gridSize) {
-        grid[y][x] = "house";
+        grid[y][x] = selectedBuilding;
       }
       draw();
     });
@@ -59,6 +98,18 @@
         world = (world === "light") ? "shadow" : "light";
         draw();
       }
+    });
+
+    // Menu de sélection
+    document.querySelectorAll("button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        if (btn.id === "houseBtn") selectedBuilding = "house";
+        if (btn.id === "farmBtn") selectedBuilding = "farm";
+        if (btn.id === "factoryBtn") selectedBuilding = "factory";
+        if (btn.id === "roadBtn") selectedBuilding = "road";
+      });
     });
 
     draw();
