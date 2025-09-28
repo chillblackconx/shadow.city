@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Shadow City - Sous-sol</title>
+  <style>
+    body { margin:0; background:#0b0b0b; color:white; font-family:Arial; text-align:center; }
+    canvas { background:#111; display:block; margin:20px auto; border:2px solid #444; }
+    h1 { margin:10px; }
+    .menu { display:flex; justify-content:center; gap:10px; margin:10px; flex-wrap:wrap; }
+    button { padding:8px 12px; border:none; border-radius:6px; background:#333; color:white; cursor:pointer; }
+    button.active { background:#27ae60; }
+    #back { margin-top:15px; background:#c0392b; }
+  </style>
+</head>
+<body>
+  <h1>🛠️ Réseau du Sous-sol</h1>
+  <div id="stats">⚡ Électricité: OFF | 💧 Eau: OFF</div>
+  <p>[Clique pour poser/détruire câbles] - [R pour rotation]</p>
+
+  <div class="menu">
+    <button id="cableBtn" class="active">⚡ Câble</button>
+    <button id="pipeBtn">💧 Tuyau</button>
+    <button id="eraseBtn">🗑️ Supprimer</button>
+  </div>
+
+  <canvas id="subCanvas" width="600" height="600"></canvas>
+  <button id="back" onclick="window.location.href='index.html'">⬆️ Retour en ville</button>
+
+  <script>
+    const canvas = document.getElementById("subCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const gridSize = 12, cellSize = 50;
+    let selectedTool = "cable";
+    let rotation = 0;
+
+    // Charger réseau depuis localStorage
+    let subState = {
+      grid: Array.from({ length: gridSize }, () => Array(gridSize).fill(null))
+    };
+    if (localStorage.getItem("shadowCitySub")) {
+      subState = JSON.parse(localStorage.getItem("shadowCitySub"));
+    }
+
+    function saveSub() {
+      localStorage.setItem("shadowCitySub", JSON.stringify(subState));
+    }
+
+    function draw() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for (let y=0;y<gridSize;y++){
+        for (let x=0;x<gridSize;x++){
+          ctx.strokeStyle="#333";
+          ctx.strokeRect(x*cellSize,y*cellSize,cellSize,cellSize);
+          let b=subState.grid[y][x];
+          if(b) drawElement(x,y,b);
+        }
+      }
+    }
+
+    function drawElement(x,y,b) {
+      let px=x*cellSize, py=y*cellSize;
+      ctx.save();
+      ctx.translate(px+25, py+25);
+      ctx.rotate(b.rotation*Math.PI/2);
+      ctx.translate(-25,-25);
+
+      if(b.type==="cable"){
+        ctx.strokeStyle="yellow"; ctx.lineWidth=4;
+        ctx.beginPath(); ctx.moveTo(5,25); ctx.lineTo(45,25); ctx.stroke();
+      }
+      if(b.type==="pipe"){
+        ctx.strokeStyle="cyan"; ctx.lineWidth=4;
+        ctx.beginPath(); ctx.moveTo(25,5); ctx.lineTo(25,45); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Clic souris
+    canvas.addEventListener("click",(e)=>{
+      const rect=canvas.getBoundingClientRect();
+      const x=Math.floor((e.clientX-rect.left)/cellSize);
+      const y=Math.floor((e.clientY-rect.top)/cellSize);
+
+      if(x>=0&&y>=0&&x<gridSize&&y<gridSize){
+        if(selectedTool==="erase"){
+          subState.grid[y][x]=null;
+        } else {
+          subState.grid[y][x]={type:selectedTool, rotation:rotation};
+        }
+      }
+      draw(); saveSub();
+    });
+
+    // Rotation
+    document.addEventListener("keydown",(e)=>{
+      if(e.code==="KeyR"){rotation=(rotation+1)%4;}
+    });
+
+    // Menu boutons
+    document.querySelectorAll("button").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        if(btn.id.endsWith("Btn")){
+          document.querySelectorAll(".menu button").forEach(b=>b.classList.remove("active"));
+          btn.classList.add("active");
+          if(btn.id==="cableBtn") selectedTool="cable";
+          if(btn.id==="pipeBtn") selectedTool="pipe";
+          if(btn.id==="eraseBtn") selectedTool="erase";
+        }
+      });
+    });
+
+    draw();
+  </script>
+</body>
+</html>
