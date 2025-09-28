@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Shadow City</title>
+  <style>
+    body { margin:0; background:#111; color:white; font-family:Arial; text-align:center; }
+    canvas { background:#222; display:block; margin:20px auto; }
+    h1 { margin:10px; }
+  </style>
+</head>
+<body>
+  <h1>🌞 Shadow City 🌑</h1>
+  <p>[Clique pour placer une maison] - [Espace pour switcher de monde]</p>
+  <canvas id="gameCanvas" width="500" height="500"></canvas>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const gridSize = 10;
+    const cellSize = 50;
+    let world = "light"; // light ou shadow
+
+    // Grille des bâtiments (null ou "house")
+    let grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(null));
+
+    // Dessiner la grille + bâtiments
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          ctx.strokeStyle = "#444";
+          ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+
+          if (grid[y][x] === "house") {
+            ctx.fillStyle = (world === "light") ? "yellow" : "purple";
+            ctx.fillRect(x * cellSize + 5, y * cellSize + 5, cellSize - 10, cellSize - 10);
+          }
+        }
+      }
+    }
+
+    // Placer une maison
+    canvas.addEventListener("click", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) / cellSize);
+      const y = Math.floor((e.clientY - rect.top) / cellSize);
+      if (x >= 0 && y >= 0 && x < gridSize && y < gridSize) {
+        grid[y][x] = "house";
+      }
+      draw();
+    });
+
+    // Switch de monde
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space") {
+        world = (world === "light") ? "shadow" : "light";
+        draw();
+      }
+    });
+
+    draw();
+  </script>
+</body>
+</html>
