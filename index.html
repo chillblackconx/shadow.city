@@ -2,12 +2,12 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Shadow City</title>
+  <title>Shadow City v4</title>
   <style>
     body { margin:0; background:#0d0d0d; color:white; font-family:Arial; text-align:center; }
     canvas { background:#1a1a1a; display:block; margin:20px auto; border:2px solid #444; }
     h1 { margin:10px; }
-    .menu { display:flex; justify-content:center; gap:10px; margin:10px; }
+    .menu { display:flex; justify-content:center; gap:10px; margin:10px; flex-wrap:wrap; }
     button { padding:8px 12px; border:none; border-radius:6px; background:#333; color:white; cursor:pointer; }
     button.active { background:#f39c12; }
     #stats { margin:10px; font-size:18px; }
@@ -16,13 +16,14 @@
 <body>
   <h1>🌞 Shadow City 🌑</h1>
   <div id="stats">💰 Argent: 100 | 👥 Population: 0</div>
-  <p>[Clique = placer bâtiment] - [Espace = switch monde] - [R = rotation]</p>
+  <p>[Clique = placer/détruire] - [Espace = switch monde] - [R = rotation]</p>
   
   <div class="menu">
     <button id="houseBtn" class="active">Maison (50$)</button>
     <button id="farmBtn">Ferme (100$)</button>
     <button id="factoryBtn">Usine (150$)</button>
     <button id="roadBtn">Route (5$)</button>
+    <button id="bulldozeBtn">🗑️ Détruire</button>
   </div>
 
   <canvas id="gameCanvas" width="600" height="600"></canvas>
@@ -36,7 +37,7 @@
     let selectedBuilding = "house";
     let rotation = 0;
 
-    // État de la partie
+    // État
     let state = {
       money: 100,
       population: 0,
@@ -52,10 +53,10 @@
       localStorage.setItem("shadowCitySave", JSON.stringify(state));
     }
 
-    // Prix des bâtiments
+    // Prix
     const costs = { house:50, farm:100, factory:150, road:5 };
 
-    // Dessiner
+    // Dessin
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       for (let y = 0; y < gridSize; y++) {
@@ -69,7 +70,7 @@
       document.getElementById("stats").textContent = `💰 Argent: ${state.money} | 👥 Population: ${state.population}`;
     }
 
-    // Dessiner un bâtiment
+    // Dessiner bâtiment
     function drawBuilding(x, y, b) {
       let px = x * cellSize, py = y * cellSize;
       ctx.save();
@@ -82,8 +83,7 @@
         ctx.fillRect(10, 20, 30, 25);
         ctx.fillStyle = (world === "light") ? "#cc3333" : "#222";
         ctx.beginPath();
-        ctx.moveTo(10,20); ctx.lineTo(25,5); ctx.lineTo(40,20); ctx.closePath();
-        ctx.fill();
+        ctx.moveTo(10,20); ctx.lineTo(25,5); ctx.lineTo(40,20); ctx.closePath(); ctx.fill();
       }
       if (b.type === "farm") {
         ctx.fillStyle = (world === "light") ? "#2ecc71" : "#145a32";
@@ -97,27 +97,37 @@
       if (b.type === "road") {
         ctx.fillStyle = "#555"; ctx.fillRect(0,20,50,10);
       }
-
       ctx.restore();
     }
 
-    // Placer bâtiment
+    // Clic souris
     canvas.addEventListener("click", (e) => {
       const rect = canvas.getBoundingClientRect();
       const x = Math.floor((e.clientX - rect.left) / cellSize);
       const y = Math.floor((e.clientY - rect.top) / cellSize);
 
       if (x>=0 && y>=0 && x<gridSize && y<gridSize) {
-        if (!state.grid[y][x] && state.money >= costs[selectedBuilding]) {
-          state.grid[y][x] = { type:selectedBuilding, rotation:rotation };
-          state.money -= costs[selectedBuilding];
-          if (selectedBuilding === "house") state.population += 5;
+        let existing = state.grid[y][x];
+
+        if (selectedBuilding === "bulldoze") {
+          if (existing) {
+            // Récup 50% argent
+            state.money += Math.floor(costs[existing.type] / 2);
+            if (existing.type === "house") state.population -= 5;
+            state.grid[y][x] = null;
+          }
+        } else {
+          if (!existing && state.money >= costs[selectedBuilding]) {
+            state.grid[y][x] = { type:selectedBuilding, rotation:rotation };
+            state.money -= costs[selectedBuilding];
+            if (selectedBuilding === "house") state.population += 5;
+          }
         }
       }
       draw(); saveGame();
     });
 
-    // Switch monde
+    // Switch monde + rotation
     document.addEventListener("keydown", (e) => {
       if (e.code === "Space") { world = (world==="light")?"shadow":"light"; draw(); }
       if (e.code === "KeyR") { rotation = (rotation+1)%4; }
@@ -132,14 +142,13 @@
         if (btn.id==="farmBtn") selectedBuilding="farm";
         if (btn.id==="factoryBtn") selectedBuilding="factory";
         if (btn.id==="roadBtn") selectedBuilding="road";
+        if (btn.id==="bulldozeBtn") selectedBuilding="bulldoze";
       });
     });
 
     // Revenus réguliers
     setInterval(() => {
-      // impôts
       state.money += state.population; 
-      // fermes vendent
       for (let y=0;y<gridSize;y++){
         for (let x=0;x<gridSize;x++){
           let b = state.grid[y][x];
