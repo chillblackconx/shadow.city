@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Shadow City v4</title>
+  <title>Shadow City</title>
   <style>
     body { margin:0; background:#0d0d0d; color:white; font-family:Arial; text-align:center; }
     canvas { background:#1a1a1a; display:block; margin:20px auto; border:2px solid #444; }
@@ -21,8 +21,11 @@
   <div class="menu">
     <button id="houseBtn" class="active">Maison (50$)</button>
     <button id="farmBtn">Ferme (100$)</button>
-    <button id="factoryBtn">Usine (150$)</button>
+    <button id="factoryBtn">Usine (200$)</button>
+    <button id="shopBtn">Magasin (150$)</button>
     <button id="roadBtn">Route (5$)</button>
+    <button id="powerBtn">Centrale (1000$)</button>
+    <button id="filterBtn">Filtrage eau (800$)</button>
     <button id="bulldozeBtn">🗑️ Détruire</button>
   </div>
 
@@ -41,8 +44,18 @@
     let state = {
       money: 100,
       population: 0,
+      hasPower: false,
+      hasWater: false,
       grid: Array.from({ length: gridSize }, () => Array(gridSize).fill(null))
     };
+
+    // Spawn lac aléatoire
+    if (Math.random() < 0.5) {
+      let lx = Math.floor(Math.random() * gridSize);
+      let ly = Math.floor(Math.random() * gridSize);
+      state.grid[ly][lx] = { type:"lake", rotation:0 };
+      state.hasWater = true;
+    }
 
     // Charger sauvegarde
     if (localStorage.getItem("shadowCitySave")) {
@@ -54,7 +67,7 @@
     }
 
     // Prix
-    const costs = { house:50, farm:100, factory:150, road:5 };
+    const costs = { house:50, farm:100, factory:200, shop:150, road:5, power:1000, filter:800 };
 
     // Dessin
     function draw() {
@@ -67,7 +80,7 @@
           if (b) drawBuilding(x, y, b);
         }
       }
-      document.getElementById("stats").textContent = `💰 Argent: ${state.money} | 👥 Population: ${state.population}`;
+      document.getElementById("stats").textContent = `💰 Argent: ${state.money} | 👥 Population: ${state.population} | ⚡: ${state.hasPower?"ON":"OFF"} | 💧: ${state.hasWater?"ON":"OFF"}`;
     }
 
     // Dessiner bâtiment
@@ -79,25 +92,48 @@
       ctx.translate(-25, -25);
 
       if (b.type === "house") {
-        ctx.fillStyle = (world === "light") ? "#ffcc66" : "#663399";
-        ctx.fillRect(10, 20, 30, 25);
-        ctx.fillStyle = (world === "light") ? "#cc3333" : "#222";
-        ctx.beginPath();
-        ctx.moveTo(10,20); ctx.lineTo(25,5); ctx.lineTo(40,20); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "#ffcc66"; ctx.fillRect(10, 20, 30, 25);
+        ctx.fillStyle = "#cc3333"; ctx.beginPath(); ctx.moveTo(10,20); ctx.lineTo(25,5); ctx.lineTo(40,20); ctx.closePath(); ctx.fill();
       }
       if (b.type === "farm") {
-        ctx.fillStyle = (world === "light") ? "#2ecc71" : "#145a32";
-        ctx.fillRect(5,5,40,40);
+        ctx.fillStyle = "#2ecc71"; ctx.fillRect(5,5,40,40);
       }
       if (b.type === "factory") {
-        ctx.fillStyle = (world === "light") ? "#bdc3c7" : "#7f8c8d";
-        ctx.fillRect(5,20,40,25);
+        ctx.fillStyle = "#bdc3c7"; ctx.fillRect(5,20,40,25);
         ctx.fillStyle = "#444"; ctx.fillRect(15,5,10,15);
+      }
+      if (b.type === "shop") {
+        ctx.fillStyle = "#3498db"; ctx.fillRect(5,5,40,40);
+        ctx.fillStyle = "white"; ctx.fillText("S", 20, 30);
       }
       if (b.type === "road") {
         ctx.fillStyle = "#555"; ctx.fillRect(0,20,50,10);
       }
+      if (b.type === "power") {
+        ctx.fillStyle = "orange"; ctx.fillRect(5,5,40,40);
+        ctx.fillStyle = "black"; ctx.fillText("⚡", 15,30);
+      }
+      if (b.type === "filter") {
+        ctx.fillStyle = "#2980b9"; ctx.fillRect(5,5,40,40);
+        ctx.fillStyle = "white"; ctx.fillText("💧", 15,30);
+      }
+      if (b.type === "lake") {
+        ctx.fillStyle = "#3498db"; ctx.beginPath(); ctx.arc(25,25,20,0,Math.PI*2); ctx.fill();
+      }
       ctx.restore();
+    }
+
+    // Vérifie si une case a une route à côté
+    function hasAdjacentRoad(x, y) {
+      const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+      for (let d of dirs) {
+        let nx = x+d[0], ny=y+d[1];
+        if (nx>=0 && ny>=0 && nx<gridSize && ny<gridSize) {
+          let b = state.grid[ny][nx];
+          if (b && b.type==="road") return true;
+        }
+      }
+      return false;
     }
 
     // Clic souris
@@ -110,9 +146,8 @@
         let existing = state.grid[y][x];
 
         if (selectedBuilding === "bulldoze") {
-          if (existing) {
-            // Récup 50% argent
-            state.money += Math.floor(costs[existing.type] / 2);
+          if (existing && existing.type !== "lake") {
+            state.money += Math.floor(costs[existing.type] / 2 || 0);
             if (existing.type === "house") state.population -= 5;
             state.grid[y][x] = null;
           }
@@ -121,6 +156,8 @@
             state.grid[y][x] = { type:selectedBuilding, rotation:rotation };
             state.money -= costs[selectedBuilding];
             if (selectedBuilding === "house") state.population += 5;
+            if (selectedBuilding === "power") state.hasPower = true;
+            if (selectedBuilding === "filter") state.hasWater = true;
           }
         }
       }
@@ -138,24 +175,38 @@
       btn.addEventListener("click", () => {
         document.querySelectorAll("button").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
-        if (btn.id==="houseBtn") selectedBuilding="house";
-        if (btn.id==="farmBtn") selectedBuilding="farm";
-        if (btn.id==="factoryBtn") selectedBuilding="factory";
-        if (btn.id==="roadBtn") selectedBuilding="road";
-        if (btn.id==="bulldozeBtn") selectedBuilding="bulldoze";
+        selectedBuilding = btn.id.replace("Btn","");
       });
     });
 
     // Revenus réguliers
     setInterval(() => {
-      state.money += state.population; 
+      let income = 0;
+
       for (let y=0;y<gridSize;y++){
         for (let x=0;x<gridSize;x++){
           let b = state.grid[y][x];
-          if (b && b.type==="farm") state.money += 20;
-          if (b && b.type==="factory") state.money += 10;
+          if (!b) continue;
+
+          if (b.type==="house" && state.hasPower && state.hasWater) {
+            income += 2;
+          }
+          if (b.type==="farm" && state.hasWater) {
+            income += 20;
+          }
+          if (b.type==="factory" && state.hasPower && hasAdjacentRoad(x,y)) {
+            income += 50; // usine = le plus rentable
+          }
+          if (b.type==="shop" && state.hasPower && hasAdjacentRoad(x,y)) {
+            let r = Math.random();
+            if (r<0.05) income += 90; // jackpot
+            else if (r<0.2) income += 0; // rien
+            else income += 30;
+          }
         }
       }
+
+      state.money += income;
       draw(); saveGame();
     }, 5000);
 
