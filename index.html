@@ -61,6 +61,12 @@ function saveGame(){
   localStorage.setItem("shadowCitySave", JSON.stringify(state));
 }
 
+// Gestion monde et bonus
+let world = "light";
+let bonusActive = false;
+let bonusMessage = "";
+
+// Dessin
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   for(let y=0;y<gridSize;y++){
@@ -72,18 +78,35 @@ function draw(){
   }
   const powerOn = checkPower(), waterOn = checkWater();
   document.getElementById("stats").textContent = `💰 Argent: ${state.money} | 👥 Population: ${state.population} | ⚡: ${powerOn?"ON":"OFF"} | 💧: ${waterOn?"ON":"OFF"}`;
+
+  if(bonusMessage){
+    ctx.fillStyle="yellow"; ctx.font="20px Arial"; ctx.fillText(bonusMessage, canvas.width/2-100, 30);
+  }
 }
 
+// Dessiner bâtiment avec glow si bonus actif
 function drawBuilding(x,y,b){
   let px=x*cellSize, py=y*cellSize;
   ctx.save(); ctx.translate(px+25,py+25); ctx.rotate(b.rotation*Math.PI/2); ctx.translate(-25,-25);
-  if(b.type==="house"){ ctx.fillStyle="#ffcc66"; ctx.fillRect(10,20,30,25); ctx.fillStyle="#cc3333"; ctx.beginPath(); ctx.moveTo(10,20); ctx.lineTo(25,5); ctx.lineTo(40,20); ctx.closePath(); ctx.fill();}
-  if(b.type==="farm"){ ctx.fillStyle="#2ecc71"; ctx.fillRect(5,5,40,40);}
-  if(b.type==="factory"){ ctx.fillStyle="#bdc3c7"; ctx.fillRect(5,20,40,25); ctx.fillStyle="#444"; ctx.fillRect(15,5,10,15);}
-  if(b.type==="shop"){ ctx.fillStyle="#3498db"; ctx.fillRect(5,5,40,40); ctx.fillStyle="white"; ctx.fillText("S",20,30);}
-  if(b.type==="road"){ ctx.fillStyle="#555"; ctx.fillRect(0,20,50,10);}
-  if(b.type==="power"){ ctx.fillStyle="orange"; ctx.fillRect(5,5,40,40); ctx.fillStyle="black"; ctx.fillText("⚡",15,30);}
-  if(b.type==="filter"){ ctx.fillStyle="#2980b9"; ctx.fillRect(5,5,40,40); ctx.fillStyle="white"; ctx.fillText("💧",15,30);}
+  let glow=false;
+  if(bonusActive) glow=true;
+
+  function fillRectGlow(x,y,w,h,color){
+    if(glow){
+      ctx.shadowColor = "yellow";
+      ctx.shadowBlur = 15;
+    } else ctx.shadowBlur=0;
+    ctx.fillStyle=color; ctx.fillRect(x,y,w,h);
+    ctx.shadowBlur=0;
+  }
+
+  if(b.type==="house"){ fillRectGlow(10,20,30,25,"#ffcc66"); ctx.fillStyle="#cc3333"; ctx.beginPath(); ctx.moveTo(10,20); ctx.lineTo(25,5); ctx.lineTo(40,20); ctx.closePath(); ctx.fill();}
+  if(b.type==="farm"){ fillRectGlow(5,5,40,40,"#2ecc71");}
+  if(b.type==="factory"){ fillRectGlow(5,20,40,25,"#bdc3c7"); ctx.fillStyle="#444"; ctx.fillRect(15,5,10,15);}
+  if(b.type==="shop"){ fillRectGlow(5,5,40,40,"#3498db"); ctx.fillStyle="white"; ctx.fillText("S",20,30);}
+  if(b.type==="road"){ fillRectGlow(0,20,50,10,"#555");}
+  if(b.type==="power"){ fillRectGlow(5,5,40,40,"orange"); ctx.fillStyle="black"; ctx.fillText("⚡",15,30);}
+  if(b.type==="filter"){ fillRectGlow(5,5,40,40,"#2980b9"); ctx.fillStyle="white"; ctx.fillText("💧",15,30);}
   ctx.restore();
 }
 
@@ -145,8 +168,23 @@ canvas.addEventListener("click",(e)=>{
   draw(); saveGame();
 });
 
-// Rotation + switch monde
-document.addEventListener("keydown",(e)=>{if(e.code==="KeyR") rotation=(rotation+1)%4;});
+// Switch monde + bonus
+document.addEventListener("keydown",(e)=>{
+  if(e.code==="Space"){
+    world = (world==="light") ? "shadow" : "light";
+    if(Math.random()<0.5){
+      bonusActive=true;
+      bonusMessage="+50% bonus activé ! 💰";
+      setTimeout(()=>{bonusMessage=""; draw();},3000);
+    } else {
+      bonusActive=false;
+      bonusMessage="Pas de bonus 😕";
+      setTimeout(()=>{bonusMessage=""; draw();},3000);
+    }
+    draw();
+  }
+  if(e.code==="KeyR") rotation=(rotation+1)%4;
+});
 
 // Menu boutons
 document.querySelectorAll(".menu button").forEach(btn=>{
@@ -177,6 +215,10 @@ setInterval(()=>{
         else income+=30;
       }
     }
+  }
+  if(bonusActive){
+    income=Math.floor(income*1.5);
+    bonusActive=false;
   }
   state.money+=income;
   draw(); saveGame();
